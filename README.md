@@ -1,9 +1,9 @@
 # Repositorio de entrega de TP 2 del grupo 5
 
 ## Integrantes
-- José Roberto Castro
 - Abraham Rodríguez
 - Estanislao Crivos
+- José Roberto Castro
 
 ## Archivos soporte
 
