@@ -34,9 +34,18 @@
 
 /********************** inclusions *******************************************/
 
-
+#include <stdio.h>
+#include <stdint.h>
+#include <stdbool.h>
 #include "task_button.h"
+#include "main.h"
+#include "cmsis_os.h"
+#include "board.h"
+#include "logger.h"
+#include "dwt.h"
 #include "task_led.h"
+#include "app.h"
+#include "active_object_ui.h"
 /********************** macros and definitions *******************************/
 
 #define TASK_PERIOD_MS_           (50)

@@ -46,25 +46,26 @@
 
 SemaphoreHandle_t hsem_button;
 SemaphoreHandle_t hsem_led;
-LedTask_t led_task;
+LedTask_t red_task, green_task, blue_task;
 UiTask_t ui_task;
+LedTaskPoolMemory_t led_task_pool_memory;
 /********************** external data declaration *****************************/
 
 /********************** external functions definition ************************/
 
 void app_init(void)
 {
-//	/* Create LEDs AO */
-//    led_tasks_create(&red_task, &green_task, &blue_task);
-//
-//    /* Create UI AO */
-//    ui_task.red_task = &red_task;
-//    ui_task.blue_task= &blue_task;
-//    ui_task.green_task= &green_task;
-    ui_task_create(&ui_task);
+    /* Initialize the memory pool */
+    memory_pool_init(&led_task_pool, &led_task_pool_memory, MAX_LED_TASKS, sizeof(LedTask_t));
 
     /* Create button task */
-    xTaskCreate(task_button, "Button Task", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY, NULL);
+    ui_task.red_task = &red_task;
+    ui_task.blue_task= &blue_task;
+    ui_task.green_task= &green_task;
+    ui_task_create(&ui_task);
+    BaseType_t status;
+    status = xTaskCreate(task_button, "Button Task", configMINIMAL_STACK_SIZE, ui_task.button_state_queue, tskIDLE_PRIORITY, NULL);
+    configASSERT(status == pdPASS);
 
 	/* Start scheduler */
     //vTaskStartScheduler();

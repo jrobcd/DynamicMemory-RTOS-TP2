@@ -32,74 +32,38 @@
  * @author : Sebastian Bedin <sebabedin@gmail.com>
  */
 
-#ifndef INC_ACTIVE_OBJECT_UI_H
-#define INC_ACTIVE_OBJECT_UI_H
+#ifndef TASK_BUTTTON_H_
+#define TASK_BUTTTON_H_
 
-#include <stdio.h>
-#include <stdint.h>
-#include <stdbool.h>
+/********************** CPP guard ********************************************/
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-#include "main.h"
-#include "cmsis_os.h"
-#include "active_object_led.h"
-#include "board.h"
-#include "logger.h"
-#include "dwt.h"
-#include "app.h"
+/********************** inclusions *******************************************/
 
-/* This enum defines the possible states of the button */
+/********************** macros ***********************************************/
+
+/********************** typedef **********************************************/
 typedef enum
 {
-    BUTTON_STATE_NONE,
-    BUTTON_STATE_PULSE,
-    BUTTON_STATE_SHORT,
-    BUTTON_STATE_LONG
-} button_state_t;
+  BUTTON_TYPE_NONE,
+  BUTTON_TYPE_PULSE,
+  BUTTON_TYPE_SHORT,
+  BUTTON_TYPE_LONG,
+  BUTTON_TYPE__N,
+} button_type_t;
+/********************** external data declaration ****************************/
 
-typedef enum {
-    LED_COLOR_RED,
-    LED_COLOR_GREEN,
-    LED_COLOR_BLUE
-} led_color_t;
+/********************** external functions declaration ***********************/
 
-typedef struct {
-    led_cmd_t cmd;
-    led_color_t color;
-} led_cmd_with_color_t;
+void task_button(void* argument);
 
-/* This struct defines the UI task */
-typedef struct
-{
-    QueueHandle_t button_state_queue; // Queue to receive button states
-    LedTask_t *led_task; // LED task
-} UiTask_t;
+/********************** End of CPP guard *************************************/
+#ifdef __cplusplus
+}
+#endif
 
-/* UI events queue */
-extern QueueHandle_t ui_event_queue;
+#endif /* TASK_BUTTTON_H_ */
+/********************** end of file ******************************************/
 
-/* UI task */
-extern UiTask_t ui_task;
-
-/**
- * @brief This function creates the UI task
- * @param ui_task This is a pointer to the UI task
- */
-void ui_task_create(UiTask_t *ui_task);
-
-/**
- * @brief This function initializes the UI task
- * @param ui_task This is a pointer to the UI task
- * @param button_state_queue This is the queue to receive button states
- * @param red_task This is a pointer to the red LED task
- * @param green_task This is a pointer to the green LED task
- * @param blue_task This is a pointer to the blue LED task
- */
-void ui_task_init(UiTask_t *ui_task, QueueHandle_t button_state_queue, LedTask_t *led_task);
-
-/**
- * @brief This function runs the UI task
- * @param ui_task This is a pointer to the UI task
- */
-void ui_task_run(void *argument);
-
-#endif // ACTIVE_OBJECT_UI_H

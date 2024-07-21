@@ -32,21 +32,25 @@
  * @author : Sebastian Bedin <sebabedin@gmail.com>
  */
 
+/* ============================================================================================ */
+
+#include <stdio.h>
+#include <stdint.h>
+#include <stdbool.h>
+
+#include "main.h"
+#include "cmsis_os.h"
+#include "board.h"
+#include "logger.h"
+#include "dwt.h"
 #include "app.h"
 #include "active_object_led.h"
 
-//QueueHandle_t led_r_event_queue;
-//QueueHandle_t led_g_event_queue;
-//QueueHandle_t led_b_event_queue;
-QueueHandle_t led_event_queue;
 
-void led_red_set_state(led_cmd_t cmd);
-void led_green_set_state(led_cmd_t cmd);
-void led_blue_set_state(led_cmd_t cmd);
-
+memory_pool_t led_task_pool;
 /* ============================================================================================ */
 
-void led_task_init(LedTask_t *task, QueueHandle_t queue, void (*set_state)(led_cmd_t cmd))
+void led_task_init(LedTask_t *task, QueueHandle_t queue, void (*set_state)(led_cmd_t cmd)) 
 {
     task->queue = queue;
     task->set_state = set_state;
@@ -54,54 +58,93 @@ void led_task_init(LedTask_t *task, QueueHandle_t queue, void (*set_state)(led_c
 
 /* ============================================================================================ */
 
-void led_task_run(LedTask_t *task) {
-    led_cmd_with_color_t cmd_with_color;
-
-    while (true) {
-        if (xQueueReceive(task->queue, &cmd_with_color, portMAX_DELAY) == pdPASS) {
-            switch (cmd_with_color.color) {
-                case LED_COLOR_RED:
-                    led_red_set_state(cmd_with_color.cmd);
-                    break;
-                case LED_COLOR_GREEN:
-                    led_green_set_state(cmd_with_color.cmd);
-                    break;
-                case LED_COLOR_BLUE:
-                    led_blue_set_state(cmd_with_color.cmd);
-                    break;
-                default:
-                    break;
+void led_task_run(LedTask_t *task) 
+{
+    led_cmd_t cmd;
+    while (true) 
+    {
+        if (xQueueReceive(task->queue, &cmd, portMAX_DELAY) == pdPASS) 
+        {
+            task->set_state(cmd);
+            if (cmd == LED_CMD_ON) 
+            {
+                vTaskDelay(pdMS_TO_TICKS(1000));
+                task->set_state(LED_CMD_OFF);
             }
-            vTaskDelete(NULL);
         }
     }
 }
 
-
 /* ============================================================================================ */
 
-/* Modify this function depending on the HW */
-void led_red_set_state(led_cmd_t cmd) {
+void led_red_set_state(led_cmd_t cmd) 
+{
     HAL_GPIO_WritePin(LED_RED_PORT, LED_RED_PIN, cmd == LED_CMD_ON ? GPIO_PIN_SET : GPIO_PIN_RESET);
 }
 
-void led_green_set_state(led_cmd_t cmd) {
+/* ============================================================================================ */
+
+void led_green_set_state(led_cmd_t cmd) 
+{
     HAL_GPIO_WritePin(LED_GREEN_PORT, LED_GREEN_PIN, cmd == LED_CMD_ON ? GPIO_PIN_SET : GPIO_PIN_RESET);
 }
 
-void led_blue_set_state(led_cmd_t cmd) {
+/* ============================================================================================ */
+
+void led_blue_set_state(led_cmd_t cmd) 
+{
     HAL_GPIO_WritePin(LED_BLUE_PORT, LED_BLUE_PIN, cmd == LED_CMD_ON ? GPIO_PIN_SET : GPIO_PIN_RESET);
 }
 
+/* ============================================================================================ */
+
+LedTask_t *allocate_led_task(void)
+{
+    return (LedTask_t *)memory_pool_block_get(&led_task_pool);
+}
 
 /* ============================================================================================ */
 
-void led_tasks_create(LedTask_t *led_task) {
-    led_event_queue = xQueueCreate(10, sizeof(led_cmd_with_color_t));
-    led_task_init(led_task, led_event_queue, NULL); // set_state function is no longer needed here
-
-    xTaskCreate((TaskFunction_t)led_task_run, "LED Task", configMINIMAL_STACK_SIZE, led_task, tskIDLE_PRIORITY, NULL);
+void free_led_task(LedTask_t *task)
+{
+    memory_pool_block_put(&led_task_pool, task);
 }
 
+/* ============================================================================================ */
+
+void create_led_task(QueueHandle_t *event_queue, void (*set_state)(led_cmd_t cmd), const char *task_name)
+{
+    LedTask_t *task = allocate_led_task();
+    if (task == NULL) {
+        LOGGER_INFO("Failed to allocate memory for LED task");
+        return;
+    }
+
+    *event_queue = xQueueCreate(10, sizeof(led_cmd_t));
+    if (*event_queue == NULL) {
+    	LOGGER_INFO("Failed to create queue for LED task");
+        free_led_task(task);
+        return;
+    }
+
+    led_task_init(task, *event_queue, set_state);
+
+    if (xTaskCreate((TaskFunction_t)led_task_run, task_name, LED_TASK_STACK_SIZE, task, tskIDLE_PRIORITY, NULL) != pdPASS) {
+    	LOGGER_INFO("Failed to create LED task");
+        vQueueDelete(*event_queue);
+        free_led_task(task);
+    }
+}
+
+/* ============================================================================================ */
+
+void destroy_led_task(LedTask_t *task, QueueHandle_t event_queue)
+{
+    if (task != NULL) {
+        vQueueDelete(event_queue);
+        vTaskDelete(NULL);
+        free_led_task(task);
+    }
+}
 
 /* ============================================================================================ */

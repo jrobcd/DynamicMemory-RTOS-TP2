@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023 Sebastian Bedin <sebabedin@gmail.com>.
+ * Copyright (c) 2024 Sebastian Bedin <sebabedin@gmail.com>.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -32,48 +32,62 @@
  * @author : Sebastian Bedin <sebabedin@gmail.com>
  */
 
-#ifndef TASK_BUTTTON_H_
-#define TASK_BUTTTON_H_
-
-/********************** CPP guard ********************************************/
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /********************** inclusions *******************************************/
+
 #include <stdio.h>
 #include <stdint.h>
 #include <stdbool.h>
 
 #include "main.h"
 #include "cmsis_os.h"
-#include "board.h"
-#include "logger.h"
-#include "dwt.h"
-#include "app.h"
-#include "active_object_ui.h"
-/********************** macros ***********************************************/
+#include "memory_pool.h"
 
-/********************** typedef **********************************************/
-typedef enum
+/********************** macros and definitions *******************************/
+
+/********************** internal data declaration ****************************/
+
+/********************** internal functions declaration ***********************/
+
+/********************** internal data definition *****************************/
+
+/********************** external data definition *****************************/
+
+/********************** internal functions definition ************************/
+
+/********************** external functions definition ************************/
+
+void memory_pool_init(memory_pool_t* hmp, void* pmemory, size_t nblocks, size_t block_size)
 {
-  BUTTON_TYPE_NONE,
-  BUTTON_TYPE_PULSE,
-  BUTTON_TYPE_SHORT,
-  BUTTON_TYPE_LONG,
-  BUTTON_TYPE__N,
-} button_type_t;
-/********************** external data declaration ****************************/
+  linked_list_t* hlist = &(hmp->block_list);
+  linked_list_init(hlist);
 
-/********************** external functions declaration ***********************/
-
-void task_button(void* argument);
-
-/********************** End of CPP guard *************************************/
-#ifdef __cplusplus
+  for(size_t i = 0; i < nblocks; ++i)
+  {
+    void* pblock = pmemory + i*block_size;
+    linked_list_node_init((memory_pool_block_t*)pblock, NULL);
+    linked_list_node_add(hlist, pblock);
+  }
 }
-#endif
 
-#endif /* TASK_BUTTTON_H_ */
+void* memory_pool_block_get(memory_pool_t* hmp)
+{
+  portENTER_CRITICAL();
+  linked_list_t* hlist = &(hmp->block_list);
+  void* pblock = (void*)linked_list_node_remove(hlist);
+  portEXIT_CRITICAL();
+  return pblock;
+}
+
+void memory_pool_block_put(memory_pool_t* hmp, void* pblock)
+{
+  portENTER_CRITICAL();
+  if(NULL != pblock)
+  {
+    linked_list_t* hlist = &(hmp->block_list);
+    linked_list_node_init((memory_pool_block_t*)pblock, NULL);
+    linked_list_node_add(hlist, pblock);
+  }
+  portEXIT_CRITICAL();
+}
+
 /********************** end of file ******************************************/
-
